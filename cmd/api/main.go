@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"log/slog"
 	"os"
 )
 
@@ -19,6 +20,7 @@ type config struct {
 
 type application struct {
 	config config
+	logger *slog.Logger
 }
 
 func main() {
