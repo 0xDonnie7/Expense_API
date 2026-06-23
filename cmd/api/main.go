@@ -1,10 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"log"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/0xdonnie7/Expense_API/internal/database"
 )
 
 type config struct {
@@ -21,6 +25,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	db     *database.Queries
 }
 
 func main() {
@@ -34,13 +39,45 @@ func main() {
 
 	flag.Parse()
 
-	app := &application{
-		config: cfg,
-	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	err := app.server()
+	db, err := OpenDB(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	app := &application{
+		config: cfg,
+		logger: logger,
+		db:     database.New(db),
+	}
+
+	err = app.server()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func OpenDB(cfg config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.db.dsn)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	db.SetMaxOpenConns(cfg.db.maxOpenConns)
+	db.SetMaxIdleConns(cfg.db.maxIdleConns)
+
+	duration, err := time.ParseDuration(cfg.db.maxIdleTime)
+	if err != nil {
+		return nil, err
+	}
+	db.SetConnMaxIdleTime(duration)
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
