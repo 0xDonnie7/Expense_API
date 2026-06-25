@@ -1,6 +1,10 @@
 package validator
 
-import "regexp"
+import (
+	"regexp"
+	"slices"
+	"time"
+)
 
 type Validator struct {
 	Errors map[string]string
@@ -9,6 +13,7 @@ type Validator struct {
 var (
 	EmailRegex         = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+\\.[a-zA-Z]{2,}$")
 	PasswordStrengthRx = regexp.MustCompile(`^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).+$`)
+	MoneyRx            = regexp.MustCompile(`^(0\.(0[1-9]|[1-9]\d)|[1-9]\d{0,7}(\.\d{1,2})?)$`)
 )
 
 func New() *Validator {
@@ -59,4 +64,22 @@ func (v *Validator) ValidatePasswordPlaintext(password string) {
 func (v *Validator) ValidateUser(email, password string) {
 	v.ValidateEmail(email)
 	v.ValidatePasswordPlaintext(password)
+}
+
+func (v *Validator) ValidateExpense(amount, category, description, date string) {
+	v.Check(amount != "", "amount", "must be provided")
+	v.Check(Matches(amount, MoneyRx), "amount", "must be a positive amount with up to 2 decimal places")
+
+	v.Check(category != "", "category", "must be provided")
+	v.Check(PermittedValue(category, "Groceries", "Leisure", "Electronics", "Utilities", "Clothing", "Health", "Others"), "category", "must be a valid category")
+
+	v.Check(len(description) <= 1000, "description", "must not be more than 1000 characters long")
+
+	v.Check(date != "", "date", "must be provided")
+	_, err := time.Parse("2006-01-02", date)
+	v.Check(err == nil, "date", "must be a valid date in YYYY-MM-DD format")
+}
+
+func PermittedValue[T comparable](value T, permittedValues ...T) bool {
+	return slices.Contains(permittedValues, value)
 }
