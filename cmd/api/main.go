@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0xdonnie7/Expense_API/internal/database"
+	"github.com/joho/godotenv"
 )
 
 type config struct {
@@ -20,6 +21,9 @@ type config struct {
 		maxOpenConns int
 		maxIdleTime  string
 	}
+	jwt struct {
+		secret string
+	}
 }
 
 type application struct {
@@ -29,6 +33,10 @@ type application struct {
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("failed to load .env file")
+	}
+
 	var cfg config
 	flag.IntVar(&cfg.port, "port", 8080, "port number")
 	flag.StringVar(&cfg.env, "env", "development", "development|staging|production")
@@ -36,6 +44,7 @@ func main() {
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open conns")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max idle time")
+	flag.StringVar(&cfg.jwt.secret, "jwt-secret", os.Getenv("JWT_SECRET"), "JWT signing secret")
 
 	flag.Parse()
 
