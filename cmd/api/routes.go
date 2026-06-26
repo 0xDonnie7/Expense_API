@@ -18,15 +18,16 @@ func (app *application) routes() http.Handler {
 		r.Use(app.authRequired)
 
 		r.Route("api/expense", func(r chi.Router) {
-			r.Post("/add", app.addExpense)
-			r.Delete("/remove", app.removeAllExpense)
+			r.Post("/create", app.createExpense)
+			// r.Delete("/remove", app.removeExpense)
 		})
 
 		r.Route("api/expense/{id}", func(r chi.Router) {
-			r.Get("/", app.getExpense)
-			r.Put("/", app.updateExpense)
-			r.Delete("/", app.removeExpenseById)
+			r.Get("/", app.getExpenseByID)
+			r.Put("/", app.updateExpenseByID)
+			r.Delete("/", app.removeExpenseByID)
 		})
 	})
 
+	return r
 }
