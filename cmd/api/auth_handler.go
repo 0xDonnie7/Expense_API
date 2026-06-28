@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/0xdonnie7/Expense_API/internal/auth"
 	"github.com/0xdonnie7/Expense_API/internal/database"
 	"github.com/0xdonnie7/Expense_API/validator"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
@@ -26,6 +28,7 @@ func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
 	v.ValidateUser(input.Email, input.Password)
 	if !v.Valid() {
 		app.failedValidationResponse(w, v.Errors)
+		return
 	}
 
 	password := auth.Password{}
@@ -42,11 +45,27 @@ func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: password.Hash,
 	})
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		var pqErr *pq.Error
+		switch {
+		case errors.As(err, &pqErr) && pqErr.Code == "23505":
+			app.badRequestResponse(w, "a user with this email already exists")
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 
-	err = writeJSON(w, http.StatusOK, user)
+	type userResponse struct {
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		CreatedAt string `json:"created_at"`
+	}
+
+	err = writeJSON(w, http.StatusCreated, userResponse{
+		ID:        user.ID.String(),
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+	})
 	if err != nil {
 		app.invalidJSONResponse(w, err)
 	}
@@ -69,7 +88,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			app.invalidCredentialsResponse(w, r)
+			app.invalidCredentialsResponse(w, r, "email not found")
 			return
 		default:
 			app.serverErrorResponse(w, r, err)
@@ -85,7 +104,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !matches {
-		app.invalidCredentialsResponse(w, r)
+		app.invalidCredentialsResponse(w, r, "password does not match")
 		return
 	}
 
