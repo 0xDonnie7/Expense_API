@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"slices"
 	"time"
+	"unicode"
 )
 
 type Validator struct {
@@ -11,9 +12,8 @@ type Validator struct {
 }
 
 var (
-	EmailRegex         = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+\\.[a-zA-Z]{2,}$")
-	PasswordStrengthRx = regexp.MustCompile(`^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).+$`)
-	MoneyRx            = regexp.MustCompile(`^(0\.(0[1-9]|[1-9]\d)|[1-9]\d{0,7}(\.\d{1,2})?)$`)
+	EmailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+\\.[a-zA-Z]{2,}$")
+	MoneyRx    = regexp.MustCompile(`^(0\.(0[1-9]|[1-9]\d)|[1-9]\d{0,7}(\.\d{1,2})?)$`)
 )
 
 func New() *Validator {
@@ -58,7 +58,7 @@ func (v *Validator) ValidatePasswordPlaintext(password string) {
 	v.Check(password != "", "password", "must be provided")
 	v.Check(len(password) >= 8, "password", "must be atleast 8 characters")
 	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
-	v.Check(Matches(password, PasswordStrengthRx), "password", "must contain at least one uppercase letter, lowercase letter, number, and special character")
+	v.Check(StrongPassword(password), "password", "must contain at least one uppercase letter, lowercase letter, number, and special character")
 }
 
 func (v *Validator) ValidateUser(email, password string) {
@@ -82,4 +82,27 @@ func (v *Validator) ValidateExpense(amount, category, description, date string) 
 
 func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 	return slices.Contains(permittedValues, value)
+}
+
+func StrongPassword(password string) bool {
+	if len(password) < 8 {
+		return false
+	}
+
+	var hasLower, hasUpper, hasDigit, hasSymbol bool
+
+	for _, r := range password {
+		switch {
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		case unicode.IsPunct(r) || unicode.IsSymbol(r):
+			hasSymbol = true
+		}
+	}
+
+	return hasLower && hasUpper && hasDigit && hasSymbol
 }
