@@ -22,7 +22,8 @@ func (app *application) errorResponse(w http.ResponseWriter, status int, message
 
 	err := writeJSON(w, status, resp)
 	if err != nil {
-		app.logger.Error("failed to write JSON:%w", err)
+		app.logger.Error("failed to write JSON", "error", err)
+		return
 	}
 }
 
@@ -58,8 +59,7 @@ func (app *application) invalidParameterResponse(w http.ResponseWriter, paramete
 	app.errorResponse(w, http.StatusBadRequest, message)
 }
 
-func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
-	message := "invalid authentication credentials"
+func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request, message string) {
 	app.errorResponse(w, http.StatusUnauthorized, message)
 }
 
